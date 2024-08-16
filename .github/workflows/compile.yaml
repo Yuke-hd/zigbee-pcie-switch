@@ -1,0 +1,22 @@
+name: test-compile
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Arduino Sketches
+        uses: arduino/compile-sketches@v1.1.2
+        with:
+          fqbn: "esp32:esp32:esp32h2:PartitionScheme=zigbee,ZigbeeMode=ed"
+          platforms: |
+            - name: "esp32:esp32"
+              source-url: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+              version: 3.0.3
+          sketch-paths: 
+            "- ./"
