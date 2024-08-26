@@ -24,6 +24,13 @@ To get more information about the Espressif boards see [Espressif Development Ki
 * Select Partition Scheme for Zigbee: `Tools -> Partition Scheme: Zigbee 4MB with spiffs`
 * Select the COM port: `Tools -> Port: xxx` where the `xxx` is the detected COM port.
 
+#### Adding the external converter to Zigbee2mqtt
+1. Copy the `z2m-converter.js` to your Zigbee2mqtt `data` folder, name the file if needed
+2. Open Z2M web ui, go to "Setting -> External converters "
+3. Add a new entry with the name of the converter js file
+![External converters](/img/external_converters.png "External converters")
+4. Click `Submit`
+5. Restart Zigbee2mqtt
 
 ## Resources
 
