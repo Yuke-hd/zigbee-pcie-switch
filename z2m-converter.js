@@ -60,7 +60,7 @@ const definition = {
     configure: async (device, coordinatorEndpoint) => {
         const endpoint = device.getEndpoint(10);
         await reporting.bind(endpoint, coordinatorEndpoint, ['genBinaryInput']);
-        await reporting.presentValue(endpoint,{min: 60, max: 3600, change: 0});
+        await reporting.presentValue(endpoint,{min: 0, max: 3600, change: 0});
     },
 };
 
