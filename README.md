@@ -31,6 +31,10 @@ To get more information about the Espressif boards see [Espressif Development Ki
 ![External converters](/img/external_converters.png "External converters")
 4. Click `Submit`
 5. Restart Zigbee2mqtt
+   
+#### [Z2M 2.0] Adding the external converter to Zigbee2mqtt 
+1. Copy the `z2m-converter.js` to your Zigbee2mqtt `data/external_converters` folder, name the file if needed
+2. Restart Zigbee2mqtt
 
 ## Resources
 
