@@ -23,6 +23,7 @@ To get more information about the Espressif boards see [Espressif Development Ki
 * Select the End device Zigbee mode: `Tools -> Zigbee mode: Zigbee ED (end device)`
 * Select Partition Scheme for Zigbee: `Tools -> Partition Scheme: Zigbee 4MB with spiffs`
 * Select the COM port: `Tools -> Port: xxx` where the `xxx` is the detected COM port.
+* **Make sure you `esp32` library 3.3.5 installed**
 
 #### Adding the external converter to Zigbee2mqtt
 1. Copy the `z2m-converter.js` to your Zigbee2mqtt `data` folder, name the file if needed

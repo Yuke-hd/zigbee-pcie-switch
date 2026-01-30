@@ -140,12 +140,11 @@ static void esp_zb_task(void *pvParameters) {
   char inactive_text[] = { 3, 'O', 'f', 'f' };
   esp_zb_binary_input_cluster_cfg_t binary_input_cfg;
   binary_input_cfg.out_of_service = ESP_ZB_ZCL_BINARY_INPUT_OUT_OF_SERVICE_DEFAULT_VALUE;
-  binary_input_cfg.status_flags = ESP_ZB_ZCL_BINARY_INPUT_STATUS_FLAG_DEFAULT_VALUE;
+  binary_input_cfg.status_flags = ESP_ZB_ZCL_BINARY_INPUT_STATUS_FLAGS_DEFAULT_VALUE;
   esp_zb_attribute_list_t *esp_zb_binary_input_cluster = esp_zb_binary_input_cluster_create(&binary_input_cfg);
 
   bool initial_state = false;
   esp_zb_binary_input_cluster_add_attr(esp_zb_binary_input_cluster, ESP_ZB_ZCL_ATTR_BINARY_INPUT_ACTIVE_TEXT_ID, &active_text);
-  esp_zb_binary_input_cluster_add_attr(esp_zb_binary_input_cluster, ESP_ZB_ZCL_ATTR_BINARY_INPUT_PRESENT_VALUE_ID, &initial_state);
   esp_zb_binary_input_cluster_add_attr(esp_zb_binary_input_cluster, ESP_ZB_ZCL_ATTR_BINARY_INPUT_INACTIVE_TEXT_ID, &inactive_text);
   // esp_zb_binary_input_cluster_add_attr(esp_zb_binary_input_cluster, 0x0051, &initial_state);
 
@@ -185,7 +184,7 @@ static void esp_zb_task(void *pvParameters) {
   // esp_zb_nvram_erase_at_start(true);  //Comment out this line to erase NVRAM data if you are conneting to new Coordinator
 
   ESP_ERROR_CHECK(esp_zb_start(false));
-  esp_zb_main_loop_iteration();
+  esp_zb_stack_main_loop();
 }
 
 /* Handle the light attribute */
@@ -225,14 +224,11 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
   return ret;
 }
 
-bool pcie_power_state;
+volatile bool pcie_power_state;
+volatile bool pcie_power_status_pending;
 void IRAM_ATTR check_power_status() {
-  uint64_t interrupt_time = esp_timer_get_time();
   pcie_power_state = digitalRead(POWER_STATUS_PIN);
-
-  log_i("power state changed");
-  log_i("current state %s", new_state ? "high" : "low");
-  esp_zb_zcl_set_attribute_val(10, ESP_ZB_ZCL_CLUSTER_ID_BINARY_INPUT, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_BINARY_INPUT_PRESENT_VALUE_ID, &pcie_power_state, false);
+  pcie_power_status_pending = true;
 }
 
 /********************* Arduino functions **************************/
@@ -250,7 +246,7 @@ void setup() {
   pinMode(POWER_STATUS_PIN, INPUT);
 
   // Start Zigbee task
-  xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 50, NULL);
+  xTaskCreate(esp_zb_task, "Zigbee_main", 4096, NULL, 5, NULL);
   
   attachInterrupt(POWER_STATUS_PIN, check_power_status, CHANGE);
 }
@@ -276,6 +272,19 @@ void loop() {
       log_i("Resetting Zigbee network configuration");
       esp_zb_bdb_reset_via_local_action();
       esp_zb_factory_reset();
+  }
+
+  if (pcie_power_status_pending) {
+    pcie_power_status_pending = false;
+    
+    esp_zb_zcl_set_attribute_val(
+      HA_ESP_SW1_ENDPOINT,
+      ESP_ZB_ZCL_CLUSTER_ID_BINARY_INPUT,
+      ESP_ZB_ZCL_CLUSTER_SERVER_ROLE,
+      ESP_ZB_ZCL_ATTR_BINARY_INPUT_PRESENT_VALUE_ID,
+      (void *)&pcie_power_state,
+      false
+    );
   }
 
   // save the the last state
