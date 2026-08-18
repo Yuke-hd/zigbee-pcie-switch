@@ -37,6 +37,27 @@ To get more information about the Espressif boards see [Espressif Development Ki
 1. Copy the `z2m-converter.js` to your Zigbee2mqtt `data/external_converters` folder, name the file if needed
 2. Restart Zigbee2mqtt
 
+#### Adding the device handler to ZHA
+
+The handler exposes **Power button**, **Reset button**, and a **PC power status**
+binary sensor in Home Assistant.
+
+1. Copy `zha_quirks/pcie_switch.py` to `/config/custom_zha_quirks/` on the Home Assistant host.
+2. Add the following to Home Assistant's `configuration.yaml`:
+
+   ```yaml
+   zha:
+     enable_quirks: true
+     custom_quirks_path: /config/custom_zha_quirks
+   ```
+
+3. Restart Home Assistant, then pair the device with ZHA. If it was already
+   paired and the handler is not shown on the device page, remove and pair it
+   again.
+
+The handler uses the current ZHA Quirks v2 API and matches manufacturer
+`Custom devices (DiY)` with model `ESP32C6.PCIE-switch` exactly.
+
 ## Resources
 
 The ESP Zigbee SDK provides more examples:
