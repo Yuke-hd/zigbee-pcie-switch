@@ -16,7 +16,8 @@
 #define BOOT_PIN 9
 #define POWER_PIN 10
 #define RESET_PIN 11
-#define POWER_STATUS_PIN 15
+#define POWER_STATUS_PIN 15 // C6=15
+#define STATUS_LED_PIN 22
 
 /* Default End Device config */
 #define ESP_ZB_ZED_CONFIG() \
@@ -46,6 +47,14 @@
 #define POWER_SOURCE 0x04
 
 /********************* Zigbee functions **************************/
+typedef enum {
+  STATUS_OFF = 0,
+  STATUS_PAIRING = 1,
+  STATUS_JOINED = 2
+} status_mode_t;
+
+volatile status_mode_t g_status_mode = STATUS_OFF;
+
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask) {
   ESP_ERROR_CHECK(esp_zb_bdb_start_top_level_commissioning(mode_mask));
 }
@@ -57,6 +66,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
   switch (sig_type) {
     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
       log_i("Zigbee stack initialized");
+      g_status_mode = STATUS_PAIRING;
       esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
       break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
@@ -65,9 +75,11 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
         log_i("Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
         if (esp_zb_bdb_is_factory_new()) {
           log_i("Start network formation");
+          g_status_mode = STATUS_PAIRING;
           esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
         } else {
           log_i("Device rebooted");
+          g_status_mode = STATUS_JOINED;
         }
       } else {
         /* commissioning failed */
@@ -82,8 +94,10 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
           "Joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d, Short Address: 0x%04hx)",
           extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4], extended_pan_id[3], extended_pan_id[2], extended_pan_id[1],
           extended_pan_id[0], esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
+        g_status_mode = STATUS_JOINED;
       } else {
         log_i("Network steering was not successful (status: %s)", esp_err_to_name(err_status));
+        g_status_mode = STATUS_PAIRING;
         esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
       }
       break;
@@ -231,6 +245,31 @@ void IRAM_ATTR check_power_status() {
   pcie_power_status_pending = true;
 }
 
+static void update_status_led() {
+  static uint64_t last_toggle_us = 0;
+  static bool led_state = false;
+  uint64_t now_us = esp_timer_get_time();
+
+  switch (g_status_mode) {
+    case STATUS_OFF:
+      led_state = false;
+      digitalWrite(STATUS_LED_PIN, HIGH);
+      break;
+    case STATUS_JOINED:
+      led_state = true;
+      digitalWrite(STATUS_LED_PIN, LOW);
+      break;
+    case STATUS_PAIRING:
+    default:
+      if (now_us - last_toggle_us >= 500000) {
+        led_state = !led_state;
+        digitalWrite(STATUS_LED_PIN, led_state ? LOW : HIGH);
+        last_toggle_us = now_us;
+      }
+      break;
+  }
+}
+
 /********************* Arduino functions **************************/
 void setup() {
   // Init Zigbee
@@ -240,6 +279,8 @@ void setup() {
   };
   ESP_ERROR_CHECK(esp_zb_platform_config(&config));
 
+  pinMode(STATUS_LED_PIN, OUTPUT);
+  digitalWrite(STATUS_LED_PIN, HIGH);
   pinMode(POWER_PIN, OUTPUT);
   pinMode(RESET_PIN, OUTPUT);
   pinMode(BOOT_PIN, INPUT_PULLUP);
@@ -252,26 +293,33 @@ void setup() {
 }
 
 int lastState = HIGH;  // the previous state from the input pin
-int currentState = LOW;     // the current reading from the input pin
-uint64_t pressedTime  = 0;
-uint64_t releasedTime = 0;
-uint64_t LONG_PRESS_TIME = 3000 * 1000;
+uint64_t lastChangeUs = 0;
+uint64_t pressedTime = 0;
+bool longPressHandled = false;
+const uint64_t LONG_PRESS_TIME = 3ULL * 1000 * 1000;
+const uint64_t DEBOUNCE_TIME = 50ULL * 1000;
 
 void loop() {
   // reset zb network
-  currentState = digitalRead(BOOT_PIN);
+  int currentState = digitalRead(BOOT_PIN);
+  uint64_t nowUs = esp_timer_get_time();
 
-  if(lastState == HIGH && currentState == LOW)        // button is pressed
-    pressedTime = esp_timer_get_time();
-  else if(lastState == LOW && currentState == HIGH) { // button is released
-    releasedTime = esp_timer_get_time();
+  if (currentState != lastState && (nowUs - lastChangeUs) > DEBOUNCE_TIME) {
+    lastChangeUs = nowUs;
+    lastState = currentState;
+    if (currentState == LOW) {
+      pressedTime = nowUs;
+      longPressHandled = false;
+    } else {
+      longPressHandled = false;
+    }
+  }
 
-    uint64_t pressDuration = releasedTime - pressedTime;
-
-    if( pressDuration > LONG_PRESS_TIME )
-      log_i("Resetting Zigbee network configuration");
-      esp_zb_bdb_reset_via_local_action();
-      esp_zb_factory_reset();
+  if (lastState == LOW && !longPressHandled && (nowUs - pressedTime) > LONG_PRESS_TIME) {
+    longPressHandled = true;
+    log_i("Resetting Zigbee network configuration");
+    esp_zb_bdb_reset_via_local_action();
+    esp_zb_factory_reset();
   }
 
   if (pcie_power_status_pending) {
@@ -287,7 +335,7 @@ void loop() {
     );
   }
 
-  // save the the last state
-  lastState = currentState;
-  vTaskDelay(500 / portTICK_PERIOD_MS);
+  update_status_led();
+
+  vTaskDelay(10 / portTICK_PERIOD_MS);
 }
