@@ -126,7 +126,8 @@ static void esp_zb_task(void *pvParameters) {
   uint8_t zcl_version, power_source;
   zcl_version = 3;
   power_source = POWER_SOURCE;
-  uint16_t on_time = 0x0014;
+  // Start both timing counters at zero so the first press uses the requested duration.
+  uint16_t on_time = 0x0000;
   /* basic cluster create with fully customized */
   esp_zb_attribute_list_t *esp_zb_basic_cluster = esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_BASIC);
   esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_MANUFACTURER_NAME_ID, manufname);
