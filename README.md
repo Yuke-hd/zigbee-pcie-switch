@@ -10,6 +10,12 @@ Currently, this example supports the following targets.
 | Supported Targets | ESP32-C6 | ESP32-H2 |
 | ----------------- | -------- | -------- |
 
+## Hardware
+
+| Front | Back |
+| --- | --- |
+| <img src="img/front.png" alt="Front of the Zigbee PCIe switch board" width="420"> | <img src="img/back.png" alt="Back of the Zigbee PCIe switch board" width="420"> |
+
 
 ### Demo
 [![demo](https://img.youtube.com/vi/ddB3xJL942k/0.jpg)](https://www.youtube.com/shorts/ddB3xJL942k?feature=share)
