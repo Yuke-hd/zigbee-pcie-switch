@@ -23,6 +23,11 @@
     <p>Install firmware on your ESP32-H2 or ESP32-C6 Zigbee PCIe Switch. Connect it with a USB data cable.</p>
     <p id="release" hidden>Latest release <a id="version"></a></p>
     <form>
+      <fieldset id="role-selection" disabled hidden>
+        <legend>Zigbee role</legend>
+        <label><input type="radio" name="role" value="ed" checked> End device</label>
+        <label><input type="radio" name="role" value="router"> Router extender</label>
+      </fieldset>
       <fieldset disabled>
         <legend>Zigbee pairing</legend>
         <label><input type="radio" name="pairing" value="keep" checked> Keep pairing on an existing switch</label>

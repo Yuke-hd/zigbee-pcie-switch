@@ -1,6 +1,6 @@
 export const chips = {
-  "ESP32-H2": { file: "esp32h2.bin", id: 16 },
-  "ESP32-C6": { file: "esp32c6.bin", id: 13 },
+  "ESP32-H2": { files: { ed: "esp32h2.bin", router: "esp32h2-router.bin" }, id: 16 },
+  "ESP32-C6": { files: { ed: "esp32c6.bin", router: "esp32c6-router.bin" }, id: 13 },
 };
 
 const flashSize = 0x400000;

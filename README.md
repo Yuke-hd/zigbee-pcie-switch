@@ -23,16 +23,24 @@ Currently, this example supports the following targets.
 
 ### Flashing from a browser
 
-Connect the switch with a USB data cable and open the [firmware installer](https://yuke-hd.github.io/zigbee-pcie-switch/) in desktop Chrome or Edge. It detects the ESP32-H2 or ESP32-C6 and installs the latest stable GitHub release.
+Connect the switch with a USB data cable and open the [firmware installer](https://yuke-hd.github.io/zigbee-pcie-switch/) in desktop Chrome or Edge. It detects the ESP32-H2 or ESP32-C6 and installs the latest stable GitHub release. Choose **End device** or **Router extender** when available.
 
-- **Keep pairing** updates an existing switch with the same Zigbee partition layout. It preserves Zigbee pairing and device settings.
-- **Wipe** installs a fresh copy of the firmware and clears device settings and pairing. Choose this for a new switch or when you want to pair it again.
+- **Keep pairing** updates an existing switch using the same role and Zigbee partition layout. It preserves Zigbee pairing and device settings.
+- **Wipe** installs a fresh copy of the firmware and clears device settings and pairing. Choose this for a new switch, when changing roles, or when you want to pair it again.
 
 If the installer cannot connect, put the board in download mode by holding its BOOT button while resetting or reconnecting USB, then retry.
 
+### Zigbee range extender
+
+The router firmware extends an existing Zigbee mesh while keeping PC power and reset controls available. Keep the board powered continuously so other devices can route through it.
+
+Use the browser installer, download the matching `esp32h2-router.bin` or `esp32c6-router.bin` from [GitHub Releases](https://github.com/Yuke-hd/zigbee-pcie-switch/releases), or build the router firmware in Arduino IDE. For a merged release binary, use Espressif's esptool to write the image at address `0x0`.
+
+When changing roles, remove the switch from your coordinator, use **Wipe** in the browser installer or erase the board's flash before uploading manually, then pair it again. The roles use different flash layouts for Zigbee settings.
+
 #### Publishing firmware
 
-Set the repository's **Settings → Pages → Source** to **GitHub Actions**. Publish a stable GitHub release from a tag that includes the firmware workflow. CI builds both chip variants with Arduino-ESP32 3.3.5 and attaches `esp32h2.bin` and `esp32c6.bin` to the release. A separate workflow deploys the browser installer and serves those same binaries over HTTPS.
+Set the repository's **Settings → Pages → Source** to **GitHub Actions**. Publish a stable GitHub release from a tag that includes the firmware workflow. CI builds both chip variants with Arduino-ESP32 3.3.5 and attaches `esp32h2.bin`, `esp32c6.bin`, `esp32h2-router.bin`, and `esp32c6-router.bin` to the release. A separate workflow deploys the browser installer and serves those binaries over HTTPS.
 
 To redeploy the installer for the current stable release, run **Deploy firmware installer** from the Actions tab on `main`.
 
@@ -41,8 +49,8 @@ To redeploy the installer for the current stable release, run **Deploy firmware 
 To get more information about the Espressif boards see [Espressif Development Kits](https://www.espressif.com/en/products/devkits).
 
 * Before Compile/Verify, select the correct board: `Tools -> Board`.
-* Select the End device Zigbee mode: `Tools -> Zigbee mode: Zigbee ED (end device)`
-* Select Partition Scheme for Zigbee: `Tools -> Partition Scheme: Zigbee 4MB with spiffs`
+* For an end device, select `Zigbee ED (end device)` under **Zigbee mode** and `Zigbee 4MB with spiffs` under **Partition Scheme**.
+* For a range extender, select `Zigbee ZCZR (coordinator/router)` under **Zigbee mode** and `Zigbee ZCZR 4MB with spiffs` under **Partition Scheme** (Arduino CLI options `ZigbeeMode=zczr,PartitionScheme=zigbee_zczr`).
 * Select the COM port: `Tools -> Port: xxx` where the `xxx` is the detected COM port.
 * **Make sure you `esp32` library 3.3.5 installed**
 

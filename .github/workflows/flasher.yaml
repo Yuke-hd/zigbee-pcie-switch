@@ -41,9 +41,16 @@ jobs:
           tag=$(jq -er .tag_name <<< "$release")
           id=$(jq -er .id <<< "$release")
           gh release download --dir "site/$id" --pattern esp32h2.bin --pattern esp32c6.bin -- "$tag"
-          test -f "site/$id/esp32h2.bin"
-          test -f "site/$id/esp32c6.bin"
-          jq '{id, tag: .tag_name, url: .html_url}' <<< "$release" > site/release.json
+          for file in esp32h2.bin esp32c6.bin; do
+            test -f "site/$id/$file"
+          done
+          router_available=$(jq -r '[.assets[].name] | (index("esp32h2-router.bin") != null and index("esp32c6-router.bin") != null)' <<< "$release")
+          if [[ "$router_available" == true ]]; then
+            gh release download --dir "site/$id" --pattern esp32h2-router.bin --pattern esp32c6-router.bin -- "$tag"
+            test -f "site/$id/esp32h2-router.bin"
+            test -f "site/$id/esp32c6-router.bin"
+          fi
+          jq --argjson router_available "$router_available" '{id, tag: .tag_name, url: .html_url, router_available: $router_available}' <<< "$release" > site/release.json
           curl -fsSL https://unpkg.com/esptool-js@0.7.0/bundle.js -o site/esptool.mjs
           echo '00ebe6fb0b202976d3e2a3c6b9a6bd438c26a81d2af6739c95ac276a64c1a84e  site/esptool.mjs' | sha256sum --check
           echo "ready=true" >> "$GITHUB_OUTPUT"
