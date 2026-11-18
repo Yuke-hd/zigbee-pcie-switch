@@ -3,8 +3,8 @@
  * and also the correct partition scheme must be selected in Tools->Partition Scheme.
 */
 
-#ifndef ZIGBEE_MODE_ED
-#error "Zigbee end device mode is not selected in Tools->Zigbee mode"
+#if !defined(ZIGBEE_MODE_ED) && !defined(ZIGBEE_MODE_ZCZR)
+#error "Select Zigbee ED or Zigbee ZCZR in Tools->Zigbee mode"
 #endif
 
 #include "esp_zigbee_core.h"
@@ -18,18 +18,6 @@
 #define RESET_PIN 11
 #define POWER_STATUS_PIN 15 // C6=15
 #define STATUS_LED_PIN 22
-
-/* Default End Device config */
-#define ESP_ZB_ZED_CONFIG() \
-  { \
-    .esp_zb_role = ESP_ZB_DEVICE_TYPE_ED, .install_code_policy = INSTALLCODE_POLICY_ENABLE, \
-    .nwk_cfg = { \
-      .zed_cfg = { \
-        .ed_timeout = ED_AGING_TIMEOUT, \
-        .keep_alive = ED_KEEP_ALIVE, \
-      }, \
-    }, \
-  }
 
 #define ESP_ZB_DEFAULT_RADIO_CONFIG() \
   { .radio_mode = ZB_RADIO_MODE_NATIVE, }
@@ -74,7 +62,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct) {
       if (err_status == ESP_OK) {
         log_i("Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
         if (esp_zb_bdb_is_factory_new()) {
-          log_i("Start network formation");
+          log_i("Start network steering");
           g_status_mode = STATUS_PAIRING;
           esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
         } else {
@@ -118,7 +106,17 @@ static void esp_zb_task(void *pvParameters) {
   char modelid[] = {19, 'E', 'S', 'P', '3', '2', 'C', '6', '.', 'P', 'C', 'I', 'E', '-', 's', 'w', 'i', 't', 'c', 'h'};
   char manufname[] = {20, 'C', 'u', 's', 't', 'o', 'm', ' ', 'd', 'e', 'v', 'i', 'c', 'e', 's', ' ', '(', 'D', 'i', 'Y', ')'};
 
-  esp_zb_cfg_t zb_nwk_cfg = ESP_ZB_ZED_CONFIG();
+  esp_zb_cfg_t zb_nwk_cfg = {
+#if defined(ZIGBEE_MODE_ZCZR)
+    .esp_zb_role = ESP_ZB_DEVICE_TYPE_ROUTER,
+    .install_code_policy = INSTALLCODE_POLICY_ENABLE,
+    .nwk_cfg = { .zczr_cfg = { .max_children = 10 } },
+#else
+    .esp_zb_role = ESP_ZB_DEVICE_TYPE_ED,
+    .install_code_policy = INSTALLCODE_POLICY_ENABLE,
+    .nwk_cfg = { .zed_cfg = { .ed_timeout = ED_AGING_TIMEOUT, .keep_alive = ED_KEEP_ALIVE } },
+#endif
+  };
   esp_zb_init(&zb_nwk_cfg);
   // esp_zb_on_off_switch_cfg_t switch_cfg = ESP_ZB_DEFAULT_ON_OFF_SWITCH_CONFIG();
   // esp_zb_ep_list_t *esp_zb_on_off_sw1_ep = esp_zb_on_off_switch_ep_create(HA_ESP_SW1_ENDPOINT, &switch_cfg);

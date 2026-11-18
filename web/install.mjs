@@ -1,7 +1,7 @@
 import { chips, writeFirmware } from "./firmware.mjs";
 
 const form = document.querySelector("form");
-const fieldset = form.querySelector("fieldset");
+const fieldsets = form.querySelectorAll("fieldset");
 const install = form.querySelector("button");
 const status = document.querySelector("#status");
 const progress = document.querySelector("progress");
@@ -19,7 +19,9 @@ try {
   version.textContent = release.tag;
   version.href = release.url;
   document.querySelector("#release").hidden = false;
-  fieldset.disabled = install.disabled = false;
+  document.querySelector("#role-selection").hidden = !release.router_available;
+  for (const fieldset of fieldsets) fieldset.disabled = false;
+  install.disabled = false;
   status.textContent = "";
 } catch (error) {
   status.textContent = error.message;
@@ -35,7 +37,9 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (install.disabled) return;
   const keep = form.elements.pairing.value === "keep";
-  fieldset.disabled = install.disabled = true;
+  const role = form.elements.role.value;
+  for (const fieldset of fieldsets) fieldset.disabled = true;
+  install.disabled = true;
   progress.hidden = true;
   let transport;
   try {
@@ -50,7 +54,7 @@ form.addEventListener("submit", async (event) => {
     const chip = chips[loader.chip.CHIP_NAME];
     if (!chip) throw new Error("Connect an ESP32-H2 or ESP32-C6 Zigbee PCIe Switch.");
     status.textContent = `Preparing firmware for ${loader.chip.CHIP_NAME}…`;
-    const response = await fetch(`./${release.id}/${chip.file}`);
+    const response = await fetch(`./${release.id}/${chip.files[role]}`);
     if (!response.ok) throw new Error("Could not download firmware. Reload the page and try again.");
     const image = new Uint8Array(await response.arrayBuffer());
 
@@ -75,6 +79,7 @@ form.addEventListener("submit", async (event) => {
     } catch (error) {
       console.error(error);
     }
-    fieldset.disabled = install.disabled = false;
+    for (const fieldset of fieldsets) fieldset.disabled = false;
+    install.disabled = false;
   }
 });

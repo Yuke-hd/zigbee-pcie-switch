@@ -23,13 +23,16 @@ jobs:
         run: |
           arduino-cli core update-index --additional-urls "$ESP32_INDEX"
           arduino-cli core install esp32:esp32@3.3.5 --additional-urls "$ESP32_INDEX"
-      - name: Build firmware for ESP32-H2 and ESP32-C6
+      - name: Build end device and router firmware for ESP32-H2 and ESP32-C6
         run: |
           mkdir release
           for chip in esp32h2 esp32c6; do
             output="$RUNNER_TEMP/$chip"
+            router_output="$RUNNER_TEMP/$chip-router"
             arduino-cli compile --fqbn "esp32:esp32:${chip}:FlashSize=4M,PartitionScheme=zigbee,ZigbeeMode=ed" --output-dir "$output" .
             cp "$output/zigbee-pcie-switch.ino.merged.bin" "release/$chip.bin"
+            arduino-cli compile --fqbn "esp32:esp32:${chip}:FlashSize=4M,PartitionScheme=zigbee_zczr,ZigbeeMode=zczr" --output-dir "$router_output" .
+            cp "$router_output/zigbee-pcie-switch.ino.merged.bin" "release/$chip-router.bin"
           done
       - name: Verify firmware images and pairing protection
         run: node --test web/firmware.test.mjs
@@ -56,7 +59,7 @@ jobs:
           RELEASE_ID: ${{ github.event.release.id }}
         run: |
           assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --paginate --slurp)
-          for file in esp32h2.bin esp32c6.bin; do
+          for file in esp32h2.bin esp32c6.bin esp32h2-router.bin esp32c6-router.bin; do
             existing=$(jq -r --arg file "$file" '.[][] | select(.name == $file) | .digest // "unknown"' <<< "$assets")
             if [[ -z "$existing" ]]; then
               gh release upload --repo "$GITHUB_REPOSITORY" -- "$TAG" "$file"

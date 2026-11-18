@@ -4,8 +4,8 @@ import test from "node:test";
 import { chips, validateImage, writeFirmware } from "./firmware.mjs";
 
 for (const [name, chip] of Object.entries(chips)) {
-  test(`${name} release image preserves pairing on a compatible layout`, async () => {
-    const image = await readFile(new URL(`../release/${chip.file}`, import.meta.url));
+  for (const role of Object.keys(chip.files)) test(`${name} ${role} image preserves pairing on a compatible layout`, async () => {
+    const image = await readFile(new URL(`../release/${chip.files[role]}`, import.meta.url));
     validateImage(image, chip);
     const table = image.subarray(0x8000, 0x8c00);
     const writes = [];
@@ -35,7 +35,8 @@ for (const [name, chip] of Object.entries(chips)) {
     loader.readFlash = async () => assert.fail("Fresh install must work on blank flash");
     await writeFirmware(loader, image, false, () => {});
     assert.deepEqual(writes[1].fileArray, [{ address: 0, data: image }]);
-    assert.ok(image.subarray(0x3eb000, 0x3f0000).every((byte) => byte === 0xff));
+    const storageOffset = role === "router" ? 0x3ea000 : 0x3eb000;
+    assert.ok(image.subarray(storageOffset, 0x3f0000).every((byte) => byte === 0xff));
 
     loader.chip.CHIP_NAME = name === "ESP32-H2" ? "ESP32-C6" : "ESP32-H2";
     await assert.rejects(writeFirmware(loader, image, false), /invalid for this device/);
