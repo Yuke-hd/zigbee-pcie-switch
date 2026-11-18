@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zigbee PCIe Switch firmware installer</title>
+  <style>
+    :root { color-scheme: light dark; font: 1rem/1.55 system-ui, sans-serif; }
+    body { margin: 0; }
+    main { max-width: 37rem; margin: 8vh auto; padding: 0 1.25rem; }
+    h1 { line-height: 1.15; margin-bottom: .5rem; }
+    fieldset { padding: .75rem 1rem; margin: 1.5rem 0 1rem; border: 1px solid GrayText; }
+    legend { font-weight: 600; }
+    label { display: block; padding: .4rem 0; cursor: pointer; }
+    button { font: inherit; font-weight: 600; padding: .55rem 1rem; cursor: pointer; }
+    button:disabled { cursor: default; }
+    progress { width: 100%; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Zigbee PCIe Switch</h1>
+    <p>Install firmware on your ESP32-H2 or ESP32-C6 Zigbee PCIe Switch. Connect it with a USB data cable.</p>
+    <p id="release" hidden>Latest release <a id="version"></a></p>
+    <form>
+      <fieldset disabled>
+        <legend>Zigbee pairing</legend>
+        <label><input type="radio" name="pairing" value="keep" checked> Keep pairing on an existing switch</label>
+        <label><input type="radio" name="pairing" value="wipe"> Wipe device settings and pairing for a fresh install</label>
+      </fieldset>
+      <button disabled>Install and keep pairing</button>
+    </form>
+    <p id="status" role="status">Checking for firmware…</p>
+    <progress aria-label="Firmware write progress" value="0" max="1" hidden></progress>
+    <noscript>Enable JavaScript to use this installer.</noscript>
+  </main>
+  <script type="module" src="./install.mjs"></script>
+</body>
+</html>
