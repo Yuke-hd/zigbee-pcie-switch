@@ -21,6 +21,21 @@ Currently, this example supports the following targets.
 [![demo](https://img.youtube.com/vi/ddB3xJL942k/0.jpg)](https://www.youtube.com/shorts/ddB3xJL942k?feature=share)
 
 
+### Flashing from a browser
+
+Connect the switch with a USB data cable and open the [firmware installer](https://yuke-hd.github.io/zigbee-pcie-switch/) in desktop Chrome or Edge. It detects the ESP32-H2 or ESP32-C6 and installs the latest stable GitHub release.
+
+- **Keep pairing** updates an existing switch with the same Zigbee partition layout. It preserves Zigbee pairing and device settings.
+- **Wipe** installs a fresh copy of the firmware and clears device settings and pairing. Choose this for a new switch or when you want to pair it again.
+
+If the installer cannot connect, put the board in download mode by holding its BOOT button while resetting or reconnecting USB, then retry.
+
+#### Publishing firmware
+
+Set the repository's **Settings → Pages → Source** to **GitHub Actions**. Publish a stable GitHub release from a tag that includes the firmware workflow. CI builds both chip variants with Arduino-ESP32 3.3.5 and attaches `esp32h2.bin` and `esp32c6.bin` to the release. A separate workflow deploys the browser installer and serves those same binaries over HTTPS.
+
+To redeploy the installer for the current stable release, run **Deploy firmware installer** from the Actions tab on `main`.
+
 #### Using Arduino IDE
 
 To get more information about the Espressif boards see [Espressif Development Kits](https://www.espressif.com/en/products/devkits).

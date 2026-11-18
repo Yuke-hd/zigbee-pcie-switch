@@ -1,0 +1,56 @@
+name: Deploy firmware installer
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [test-compile]
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency: firmware-installer
+
+jobs:
+  deploy:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'release' &&
+        github.event.workflow_run.conclusion == 'success'))
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage the latest stable release
+        id: stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ $(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq 'length') == 0 ]]; then
+            echo "Publish a stable release before deploying the installer."
+            exit 0
+          fi
+          mkdir site
+          cp web/index.html web/install.mjs web/firmware.mjs site/
+          release=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest")
+          tag=$(jq -er .tag_name <<< "$release")
+          id=$(jq -er .id <<< "$release")
+          gh release download --dir "site/$id" --pattern esp32h2.bin --pattern esp32c6.bin -- "$tag"
+          test -f "site/$id/esp32h2.bin"
+          test -f "site/$id/esp32c6.bin"
+          jq '{id, tag: .tag_name, url: .html_url}' <<< "$release" > site/release.json
+          curl -fsSL https://unpkg.com/esptool-js@0.7.0/bundle.js -o site/esptool.mjs
+          echo '00ebe6fb0b202976d3e2a3c6b9a6bd438c26a81d2af6739c95ac276a64c1a84e  site/esptool.mjs' | sha256sum --check
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-pages-artifact@v4
+        if: steps.stage.outputs.ready == 'true'
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+        if: steps.stage.outputs.ready == 'true'
+        id: deployment

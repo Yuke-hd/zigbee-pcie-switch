@@ -3,20 +3,65 @@ name: test-compile
 on:
   push:
   pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-      - name: Compile Arduino Sketches
-        uses: arduino/compile-sketches@v1.1.2
+      - uses: arduino/setup-arduino-cli@v2.1.0
         with:
-          fqbn: "esp32:esp32:esp32h2:PartitionScheme=zigbee,ZigbeeMode=ed"
-          platforms: |
-            - name: "esp32:esp32"
-              source-url: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-              version: 3.3.5
-          sketch-paths: 
-            "- ./"
+          version: 1.5.1
+      - name: Install Arduino-ESP32
+        env:
+          ESP32_INDEX: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+        run: |
+          arduino-cli core update-index --additional-urls "$ESP32_INDEX"
+          arduino-cli core install esp32:esp32@3.3.5 --additional-urls "$ESP32_INDEX"
+      - name: Build firmware for ESP32-H2 and ESP32-C6
+        run: |
+          mkdir release
+          for chip in esp32h2 esp32c6; do
+            output="$RUNNER_TEMP/$chip"
+            arduino-cli compile --fqbn "esp32:esp32:${chip}:FlashSize=4M,PartitionScheme=zigbee,ZigbeeMode=ed" --output-dir "$output" .
+            cp "$output/zigbee-pcie-switch.ino.merged.bin" "release/$chip.bin"
+          done
+      - name: Verify firmware images and pairing protection
+        run: node --test web/firmware.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: release/*.bin
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware
+      - name: Attach firmware to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          RELEASE_ID: ${{ github.event.release.id }}
+        run: |
+          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --paginate --slurp)
+          for file in esp32h2.bin esp32c6.bin; do
+            existing=$(jq -r --arg file "$file" '.[][] | select(.name == $file) | .digest // "unknown"' <<< "$assets")
+            if [[ -z "$existing" ]]; then
+              gh release upload --repo "$GITHUB_REPOSITORY" -- "$TAG" "$file"
+            elif [[ "$existing" != "sha256:$(sha256sum "$file" | cut -d ' ' -f1)" ]]; then
+              echo "Release asset $file already exists and differs from this build."
+              exit 1
+            fi
+          done
