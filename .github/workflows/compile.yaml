@@ -45,6 +45,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Persist ccache across runs; the IDF container otherwise discards it.
+      - uses: actions/cache@v4
+        with:
+          path: matter-thread/.ccache
+          key: ccache-matter-${{ github.sha }}
+          restore-keys: ccache-matter-
       - name: Build Matter over Thread firmware
         uses: espressif/esp-idf-ci-action@v1
         with:
@@ -52,7 +58,9 @@ jobs:
           target: esp32c6
           path: matter-thread
           command: >-
+            export CCACHE_DIR=$PWD/.ccache &&
             idf.py build &&
+            ccache -s &&
             cd build &&
             python -m esptool --chip esp32c6 merge_bin --fill-flash-size 4MB -o ../esp32c6-matter.bin @flash_args
       - uses: actions/upload-artifact@v4
