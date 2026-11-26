@@ -1,6 +1,6 @@
 export const chips = {
   "ESP32-H2": { files: { ed: "esp32h2.bin", router: "esp32h2-router.bin" }, id: 16 },
-  "ESP32-C6": { files: { ed: "esp32c6.bin", router: "esp32c6-router.bin" }, id: 13 },
+  "ESP32-C6": { files: { ed: "esp32c6.bin", router: "esp32c6-router.bin", matter: "esp32c6-matter.bin" }, id: 13 },
 };
 
 const flashSize = 0x400000;
@@ -9,10 +9,18 @@ const tableSize = 0xc00;
 const otaOffset = 0xe000;
 const appOffset = 0x10000;
 const appEnd = 0x150000;
+const matterAppOffset = 0x20000;
 
-export function validateImage(image, chip) {
+export function validateImage(image, chip, role = "ed") {
   const headerMatches = (offset) =>
     image[offset] === 0xe9 && image[offset + 12] === chip.id && image[offset + 13] === 0;
+  // The Matter (ESP-IDF) image has its own layout and is only ever written whole.
+  if (role === "matter") {
+    if (image.length !== flashSize || !headerMatches(0) || !headerMatches(matterAppOffset)) {
+      throw new Error("The release image is invalid for this device.");
+    }
+    return;
+  }
   if (image.length !== flashSize || !headerMatches(0) || !headerMatches(appOffset)) {
     throw new Error("The release image is invalid for this device.");
   }
@@ -40,10 +48,11 @@ export function validateImage(image, chip) {
   }
 }
 
-export async function writeFirmware(loader, image, keep, reportProgress) {
+export async function writeFirmware(loader, image, keep, reportProgress, role = "ed") {
   const chip = chips[loader.chip.CHIP_NAME];
   if (!chip) throw new Error("Connect an ESP32-H2 or ESP32-C6 Zigbee PCIe Switch.");
-  validateImage(image, chip);
+  if (role === "matter" && keep) throw new Error("Matter firmware installs with Wipe only.");
+  validateImage(image, chip, role);
 
   const capacity = await loader.detectFlashSize();
   if (!capacity || loader.flashSizeBytes(capacity) < flashSize) {
