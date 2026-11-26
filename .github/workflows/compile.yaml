@@ -35,11 +35,9 @@ jobs:
             arduino-cli compile --fqbn "esp32:esp32:${chip}:FlashSize=4M,PartitionScheme=zigbee_zczr,ZigbeeMode=zczr" --output-dir "$router_output" .
             cp "$router_output/zigbee-pcie-switch.ino.merged.bin" "release/$chip-router.bin"
           done
-      - name: Verify firmware images and pairing protection
-        run: node --test web/firmware.test.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: firmware
+          name: firmware-zigbee
           path: release/*.bin
           if-no-files-found: error
 
@@ -53,10 +51,37 @@ jobs:
           esp_idf_version: v5.5.4
           target: esp32c6
           path: matter-thread
+          command: >-
+            idf.py build &&
+            cd build &&
+            python -m esptool --chip esp32c6 merge_bin --fill-flash-size 4MB -o ../esp32c6-matter.bin @flash_args
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-matter
+          path: matter-thread/esp32c6-matter.bin
+          if-no-files-found: error
+
+  verify:
+    needs: [build, build-matter-thread]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          merge-multiple: true
+          path: release
+      - name: Verify firmware images and pairing protection
+        run: node --test web/firmware.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: release/*.bin
+          if-no-files-found: error
 
   release:
     if: github.event_name == 'release' && !github.event.release.prerelease
-    needs: build
+    needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -71,7 +96,7 @@ jobs:
           RELEASE_ID: ${{ github.event.release.id }}
         run: |
           assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --paginate --slurp)
-          for file in esp32h2.bin esp32c6.bin esp32h2-router.bin esp32c6-router.bin; do
+          for file in esp32h2.bin esp32c6.bin esp32h2-router.bin esp32c6-router.bin esp32c6-matter.bin; do
             existing=$(jq -r --arg file "$file" '.[][] | select(.name == $file) | .digest // "unknown"' <<< "$assets")
             if [[ -z "$existing" ]]; then
               gh release upload --repo "$GITHUB_REPOSITORY" -- "$TAG" "$file"

@@ -19,7 +19,9 @@ try {
   version.textContent = release.tag;
   version.href = release.url;
   document.querySelector("#release").hidden = false;
-  document.querySelector("#role-selection").hidden = !release.router_available;
+  document.querySelector("#router-option").hidden = !release.router_available;
+  document.querySelector("#matter-option").hidden = !release.matter_available;
+  document.querySelector("#role-selection").hidden = !release.router_available && !release.matter_available;
   for (const fieldset of fieldsets) fieldset.disabled = false;
   install.disabled = false;
   status.textContent = "";
@@ -28,10 +30,15 @@ try {
 }
 
 form.addEventListener("change", () => {
+  const matter = form.elements.role.value === "matter";
+  const keepOption = form.querySelector('[name="pairing"][value="keep"]');
+  keepOption.disabled = matter;
+  if (matter) form.elements.pairing.value = "wipe";
   install.textContent = form.elements.pairing.value === "keep"
     ? "Install and keep pairing"
     : "Wipe and install";
 });
+form.dispatchEvent(new Event("change"));
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -53,6 +60,7 @@ form.addEventListener("submit", async (event) => {
 
     const chip = chips[loader.chip.CHIP_NAME];
     if (!chip) throw new Error("Connect an ESP32-H2 or ESP32-C6 Zigbee PCIe Switch.");
+    if (!chip.files[role]) throw new Error("Matter over Thread needs an ESP32-C6 switch.");
     status.textContent = `Preparing firmware for ${loader.chip.CHIP_NAME}…`;
     const response = await fetch(`./${release.id}/${chip.files[role]}`);
     if (!response.ok) throw new Error("Could not download firmware. Reload the page and try again.");
@@ -62,12 +70,14 @@ form.addEventListener("submit", async (event) => {
       if (progress.hidden) status.textContent = "Writing firmware. Keep the USB cable connected.";
       progress.hidden = false;
       progress.value = fraction;
-    });
+    }, role);
     status.textContent = "Firmware written. Restarting the switch…";
     await loader.after("hard_reset");
-    status.textContent = keep
-      ? "Installation complete. Your Zigbee pairing was kept."
-      : "Installation complete. Pair the switch with your Zigbee network.";
+    status.textContent = role === "matter"
+      ? "Installation complete. Add the switch in your Matter app."
+      : keep
+        ? "Installation complete. Your Zigbee pairing was kept."
+        : "Installation complete. Pair the switch with your Zigbee network.";
   } catch (error) {
     status.textContent = error.name === "NotFoundError" && !transport
       ? "No USB port selected."

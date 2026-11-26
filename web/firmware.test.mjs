@@ -4,7 +4,7 @@ import test from "node:test";
 import { chips, validateImage, writeFirmware } from "./firmware.mjs";
 
 for (const [name, chip] of Object.entries(chips)) {
-  for (const role of Object.keys(chip.files)) test(`${name} ${role} image preserves pairing on a compatible layout`, async () => {
+  for (const role of Object.keys(chip.files).filter((role) => role !== "matter")) test(`${name} ${role} image preserves pairing on a compatible layout`, async () => {
     const image = await readFile(new URL(`../release/${chip.files[role]}`, import.meta.url));
     validateImage(image, chip);
     const table = image.subarray(0x8000, 0x8c00);
@@ -43,3 +43,23 @@ for (const [name, chip] of Object.entries(chips)) {
     assert.equal(writes.length, 2);
   });
 }
+
+test("ESP32-C6 Matter image installs only as a full wipe", async () => {
+  const chip = chips["ESP32-C6"];
+  const image = await readFile(new URL(`../release/${chip.files.matter}`, import.meta.url));
+  validateImage(image, chip, "matter");
+  assert.throws(() => validateImage(image, chip), /partition layout|invalid/);
+  assert.throws(() => validateImage(image, chips["ESP32-H2"], "matter"), /invalid for this device/);
+
+  const writes = [];
+  const loader = {
+    chip: { CHIP_NAME: "ESP32-C6" },
+    detectFlashSize: async () => "4MB",
+    flashSizeBytes: () => 0x400000,
+    readFlash: async () => assert.fail("Matter install must not read the old layout"),
+    writeFlash: async (options) => writes.push(options),
+  };
+  await assert.rejects(writeFirmware(loader, image, true, () => {}, "matter"), /Wipe only/);
+  await writeFirmware(loader, image, false, () => {}, "matter");
+  assert.deepEqual(writes.map((write) => write.fileArray), [[{ address: 0, data: image }]]);
+});

@@ -12,6 +12,7 @@
     fieldset { padding: .75rem 1rem; margin: 1.5rem 0 1rem; border: 1px solid GrayText; }
     legend { font-weight: 600; }
     label { display: block; padding: .4rem 0; cursor: pointer; }
+    label[hidden] { display: none; }
     button { font: inherit; font-weight: 600; padding: .55rem 1rem; cursor: pointer; }
     button:disabled { cursor: default; }
     progress { width: 100%; }
@@ -24,12 +25,13 @@
     <p id="release" hidden>Latest release <a id="version"></a></p>
     <form>
       <fieldset id="role-selection" disabled hidden>
-        <legend>Zigbee role</legend>
-        <label><input type="radio" name="role" value="ed" checked> End device</label>
-        <label><input type="radio" name="role" value="router"> Router extender</label>
+        <legend>Firmware</legend>
+        <label><input type="radio" name="role" value="ed" checked> Zigbee end device</label>
+        <label id="router-option" hidden><input type="radio" name="role" value="router"> Zigbee router extender</label>
+        <label id="matter-option" hidden><input type="radio" name="role" value="matter"> Matter over Thread (ESP32-C6 only, Wipe only)</label>
       </fieldset>
       <fieldset disabled>
-        <legend>Zigbee pairing</legend>
+        <legend>Pairing</legend>
         <label><input type="radio" name="pairing" value="keep" checked> Keep pairing on an existing switch</label>
         <label><input type="radio" name="pairing" value="wipe"> Wipe device settings and pairing for a fresh install</label>
       </fieldset>

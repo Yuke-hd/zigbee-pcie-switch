@@ -23,7 +23,7 @@ Currently, this example supports the following targets.
 
 ### Flashing from a browser
 
-Connect the switch with a USB data cable and open the [firmware installer](https://yuke-hd.github.io/zigbee-pcie-switch/) in desktop Chrome or Edge. It detects the ESP32-H2 or ESP32-C6 and installs the latest stable GitHub release. Choose **End device** or **Router extender** when available.
+Connect the switch with a USB data cable and open the [firmware installer](https://yuke-hd.github.io/zigbee-pcie-switch/) in desktop Chrome or Edge. It detects the ESP32-H2 or ESP32-C6 and installs the latest stable GitHub release. Choose **Zigbee end device**, **Zigbee router extender** or, on ESP32-C6, **Matter over Thread** when available.
 
 - **Keep pairing** updates an existing switch using the same role and Zigbee partition layout. It preserves Zigbee pairing and device settings.
 - **Wipe** installs a fresh copy of the firmware and clears device settings and pairing. Choose this for a new switch, when changing roles, or when you want to pair it again.
@@ -70,7 +70,9 @@ To get more information about the Espressif boards see [Espressif Development Ki
 
 [`matter-thread/`](matter-thread/main/app_main.cpp) is the same switch running Matter over Thread instead of Zigbee, so it works with Apple Home, Google Home, Home Assistant and other Matter controllers through a Thread border router (HomePod mini, Apple TV, Nest Hub, Home Assistant SkyConnect/ZBT-1, ...). It is an ESP-IDF project, not an Arduino sketch, because the Arduino Matter library for the C6 is prebuilt for Wi-Fi.
 
-Build and flash with ESP-IDF v5.5.4 (the `esp_matter` component is downloaded automatically on the first build):
+Install it from the [firmware installer](https://yuke-hd.github.io/zigbee-pcie-switch/) by choosing **Matter over Thread**, or download `esp32c6-matter.bin` from [GitHub Releases](https://github.com/Yuke-hd/zigbee-pcie-switch/releases) and write it at address `0x0`. Switching between Zigbee and Matter always wipes the device, so remove it from your old controller first.
+
+To build it yourself, use ESP-IDF v5.5.4 (the `esp_matter` component is downloaded automatically on the first build):
 
 ```bash
 cd matter-thread
