@@ -66,6 +66,29 @@ To get more information about the Espressif boards see [Espressif Development Ki
 1. Copy the `z2m-converter.js` to your Zigbee2mqtt `data/external_converters` folder, name the file if needed
 2. Restart Zigbee2mqtt
 
+## Matter over Thread version (ESP32-C6)
+
+[`matter-thread/`](matter-thread/main/app_main.cpp) is the same switch running Matter over Thread instead of Zigbee, so it works with Apple Home, Google Home, Home Assistant and other Matter controllers through a Thread border router (HomePod mini, Apple TV, Nest Hub, Home Assistant SkyConnect/ZBT-1, ...). It is an ESP-IDF project, not an Arduino sketch, because the Arduino Matter library for the C6 is prebuilt for Wi-Fi.
+
+Build and flash with ESP-IDF v5.5.4 (the `esp_matter` component is downloaded automatically on the first build):
+
+```bash
+cd matter-thread
+. ~/esp/esp-idf/export.sh   # wherever your ESP-IDF v5.5 lives
+idf.py set-target esp32c6
+idf.py build flash monitor
+```
+
+Pairing: the serial monitor prints a QR code link and a manual pairing code. Add the device in your Matter app with either one (the test defaults are manual code `34970112332`, passcode `20202021`). The app pairs over Bluetooth, then hands the device your Thread network credentials. The firmware uses Espressif's test certificates, so your app will warn that the device is uncertified. That is expected for a DIY device. The status LED blinks until the device is paired and on Thread, then stays on. Hold BOOT for 3 s to factory reset.
+
+The device is named "PC Switch" (product "PCIe Switch"). It shows up with three parts, which Home Assistant names "Power", "Reset" and "Status" from each endpoint's FixedLabel:
+
+| Part | Matter type | Behaviour |
+| --- | --- | --- |
+| Power | On/off plug | Turning it on presses the power button for 0.2 s, then it turns itself back off |
+| Reset | On/off plug | The same, for the reset button |
+| Status | Contact sensor | Closed (contact) = PC is on |
+
 ## Resources
 
 The ESP Zigbee SDK provides more examples:

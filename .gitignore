@@ -1,1 +1,4 @@
 build/
+matter-thread/managed_components/
+matter-thread/sdkconfig
+matter-thread/sdkconfig.old

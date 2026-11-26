@@ -43,6 +43,17 @@ jobs:
           path: release/*.bin
           if-no-files-found: error
 
+  build-matter-thread:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Matter over Thread firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.4
+          target: esp32c6
+          path: matter-thread
+
   release:
     if: github.event_name == 'release' && !github.event.release.prerelease
     needs: build
