@@ -99,6 +99,9 @@ private:
 
 static LabelProvider s_label_provider;
 
+// StartUpOnOff can turn OnOff on during start(); that must not press the PC button.
+static bool s_ready = false;
+
 static void set_on_off(intptr_t endpoint_id)
 {
     esp_matter_attr_val_t val = esp_matter_bool(false);
@@ -130,7 +133,7 @@ static esp_err_t app_attribute_update_cb(attribute::callback_type_t type, uint16
         return ESP_OK;
     }
     Button *button = (Button *)priv_data;
-    if (button && val->val.b) {
+    if (s_ready && button && val->val.b) {
         ESP_LOGI(TAG, "%s pressed", button == &s_power ? "POWER" : "RESET");
         gpio_set_level(button->pin, 1);
         esp_timer_stop(button->timer);  // a repeat "on" restarts the pulse
@@ -259,6 +262,7 @@ extern "C" void app_main()
     // OnOff is persisted; a reboot mid-press would otherwise leave a button reported "on".
     chip::DeviceLayer::PlatformMgr().ScheduleWork(set_on_off, s_power.endpoint_id);
     chip::DeviceLayer::PlatformMgr().ScheduleWork(set_on_off, s_reset.endpoint_id);
+    chip::DeviceLayer::PlatformMgr().ScheduleWork([](intptr_t) { s_ready = true; }, 0);
 
     xTaskCreate(io_task, "io", 4096, nullptr, 5, nullptr);
 }
